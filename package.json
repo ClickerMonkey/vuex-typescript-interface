@@ -1,0 +1,16 @@
+{
+  "name": "vuex-typescript-interface",
+  "version": "0.0.1",
+  "author": "Philip Diffenderfer",
+  "description": "Adds type safety to Vuex",
+  "license": "MIT",
+  "typings": "index.d.ts",
+  "keywords": [
+    "vuex",
+    "typescript"
+  ],
+  "dependencies": {
+    "vue": "^2.6.10",
+    "vuex": "^3.1.0"
+  }
+}
