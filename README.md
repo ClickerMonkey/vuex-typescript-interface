@@ -2,6 +2,14 @@
 
 Through the magic of Typescript, this library makes Vuex as typesafe as currently possible through a slightly new syntax. This library overrides the types that come with Vuex and provides a slightly altered version.
 
+### Usage
+
+```typescript
+import Vuex from 'vuex-typescript-interface';
+
+// new Vuex.Store like normal
+```
+
 Normally you can pass a state to `new Vuex.Store<State>`. That has very limited use. With this library you can pass an interface like this to `Vuex.Store`:
 
 ```typescript
@@ -116,3 +124,4 @@ const root = new Vuex.Store<IRoot>({
  - if mutation has an argument on T, try to enforce that argument always being passed to commit
  - if action has an argument on T, try to enforce that argument always being passed to dispatch
  - Namespacing doesn't work. Not sure we can do anything about this.
+ - Need to work on mapX functions
