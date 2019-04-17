@@ -1,6 +1,6 @@
 {
   "name": "vuex-typescript-interface",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Philip Diffenderfer",
   "description": "Adds type safety to Vuex",
   "license": "MIT",

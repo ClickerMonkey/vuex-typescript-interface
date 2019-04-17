@@ -10,7 +10,7 @@ export type Mutation<P, R = void> = (payload: P) => R;
 
 export type MutationPayload<M> = M extends Mutation<infer P> ? P : never;
 
-export type Action<P, R> = (payload: P) => Promise<R>;
+export type Action<P, R, I = Promise<R>> = (payload: P) => I;
 
 export type ActionPayload<A> = A extends Action<infer P, infer R> ? P : never;
 
@@ -43,7 +43,7 @@ export type MutationKeys<S> = {
 }[keyof S];
 
 export type ActionKeys<S> = {
-  [K in keyof S]: S[K] extends Action<infer P, infer R> ? K : never;
+  [K in keyof S]: S[K] extends Action<infer P, infer R, infer I> ? (I extends Promise<R> ?  K : never) : never;
 }[keyof S];
 
 export type StateFor<T> = {
