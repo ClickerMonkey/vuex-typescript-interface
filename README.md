@@ -5,7 +5,6 @@ Through the magic of Typescript, this library makes Vuex as typesafe as currentl
 Normally you can pass a state to `new Vuex.Store<State>`. That has very limited use. With this library you can pass an interface like this to `Vuex.Store`:
 
 ```typescript
-
 interface IStore
 {
   // State (are non-function properties not marked readonly)
@@ -111,6 +110,61 @@ const root = new Vuex.Store<IRoot>({
   modules: { child } // you could pass objects here like normal, but it won't be able to detect types
 })
 ```
+
+## Mapping
+
+To take advantage of that sweet type safety for mapping, currently only `createNamespacedHelpers` is supported.
+
+```typescript
+// These functions require valid state/getter/mutations/actions.
+const { mapState, mapGetters, mapMutations, mapActions } = createNamespacedHelpers<IStore>('storeNamespace');
+
+mapState(['firstName'])
+// { firstName (): string }
+
+mapState({
+  first: 'firstName',
+  hasFullName (state, getters): boolean {
+    return state.lastName && state.firstName;
+  }
+})
+// { first (): string, hasFullName (): boolean }
+
+mapGetters(['fullName'])
+// { fullName (): string }
+
+mapGetters({
+  full: 'fullName'
+})
+// { full (): string }
+
+mapMutations(['clearNames', 'setLastName'])
+// { clearNames (): void, setLastName (string): void }
+
+mapMutations({
+  setFirst: 'setFirstName',
+  setFirstLower (commit, name: string, lower: boolean = false): void {
+    commit('setFirstName', lower ? name.toLowerCase() : name);
+  }
+})
+// { setFirst (first): void, setFirstLower (name, lower?): void }
+
+mapActions(['loadName'])
+// { loadName (url): Promise<{firstName: string, lastName: string}> }
+
+mapActions({
+  load: 'loadName',
+  async getFirst (dispatch, url: string, upper: boolean = false): Promise<string> {
+    const { firstName } = await dispatch('loadName', url);
+    return upper ? firstName.toUpperCase() : firstName;
+  }
+})
+// { 
+//   load (url): Promise<{firstName: string, lastName: string}>
+//   getFirst (url, upper): Promise<string>
+// }
+```
+
 
 ### Possible Improvements
  - if mutation has an argument on T, try to enforce that argument always being passed to commit
