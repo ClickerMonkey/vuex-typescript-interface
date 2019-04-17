@@ -26,6 +26,8 @@ export type IfEquals<X, Y, A = X, B = never> =
   (<T>() => T extends X ? 1 : 2) extends
   (<T>() => T extends Y ? 1 : 2) ? A : B;
 
+export type Resolvable<T> = T | (() => T);
+
 
 
 export type StateKeys<T> = {
@@ -52,13 +54,13 @@ export type GettersFor<T> = {
   [K in GetterKeys<T>]: T[K];
 };
 
-export type GetterTree<T, R = T, S = StateFor<T>, G = GettersFor<T>, SR = StateFor<R>, GR = GettersFor<R>> = {
-  [K in GetterKeys<T>]: (state: S, getters: G, rootState: SR, rootGetters: GR) => T[K];
+export type GetterTree<T, R = T> = {
+  [K in GetterKeys<T>]: (state: StateFor<T>, getters: GettersFor<T>, rootState: StateFor<R>, rootGetters: GettersFor<R>) => T[K];
 }
 
-export type MutationTree<T, S = StateFor<T>> = {
+export type MutationTree<T> = {
   [K in MutationKeys<T>]: T[K] extends Mutation<infer P>
-    ? (state: S, payload: P) => void
+    ? (state: StateFor<T>, payload: P) => void
     : never;
 };
 
@@ -71,14 +73,14 @@ export type ActionTree<T, R = T> = {
 }
 
 
-export type StoreOptions<T, R = T, S = StateFor<T>> = 
+export type StoreOptions<T, R = T> = 
 {
   modules?: ModuleTree<R>;
   plugins?: Plugin<T>[];
   strict?: boolean;
   devtools?: boolean;
-} & OptionalProperties<S, { 
-  state: S | (() => S) 
+} & OptionalProperties<StateFor<T>, { 
+  state: Resolvable<StateFor<T>> 
 }> & OptionalProperties<GetterTree<T, R>, { 
   getters: GetterTree<T, R> 
 }> & OptionalProperties<MutationTree<T>, { 
@@ -87,21 +89,21 @@ export type StoreOptions<T, R = T, S = StateFor<T>> =
   actions: ActionTree<T, R> 
 }>;
 
-export declare class Store<T, R = T, S = StateFor<T>, G = GettersFor<T>>
+export declare class Store<T, R = T>
 {
   constructor(options: StoreOptions<T, R>);
 
-  readonly state: S;
-  readonly getters: G;
+  readonly state: StateFor<T>;
+  readonly getters: GettersFor<T>;
 
-  replaceState(state: S): void;
+  replaceState(state: StateFor<T>): void;
 
   commit: Commit<T, R>;
   dispatch: Dispatch<T, R>;
 
   subscribe (subscriber: MutationSubscriber<T>): () => void;
   subscribeAction (subscriber: ActionSubscriber<T> | ActionSubscribersObject<T>): () => void;
-  watch<W> (getter: (state: S, getters: G) => W, cb: (value: W, oldValue: W) => void, options?: WatchOptions): () => void;
+  watch<W> (getter: (state: StateFor<T>, getters: GettersFor<T>) => W, cb: (value: W, oldValue: W) => void, options?: WatchOptions): () => void;
 
   registerModule<N> (path: string, module: Module<N, R>, options?: ModuleOptions): void;
   registerModule<N> (path: string[], module: Module<N, R>, options?: ModuleOptions): void;
@@ -137,13 +139,13 @@ export type Plugin<T> = (store: Store<T>) => any;
 
 export interface Commit<T, R = T> 
 {
-  <K extends MutationKeys<T>, P = MutationPayload<T[K]>> (type: K, payload?: P): void;
-  <K extends MutationKeys<T>, P = MutationPayload<T[K]>> (type: K, payload: P | undefined, options: CommitOptionsThis): void;
-  <K extends MutationKeys<R>, P = MutationPayload<R[K]>> (type: K, payload: P | undefined, options: CommitOptionsRoot): void;
+  <K extends MutationKeys<T>> (type: K, payload?: MutationPayload<T[K]>): void;
+  <K extends MutationKeys<T>> (type: K, payload: MutationPayload<T[K]> | undefined, options: CommitOptionsThis): void;
+  <K extends MutationKeys<R>> (type: K, payload: MutationPayload<R[K]> | undefined, options: CommitOptionsRoot): void;
 
-  <K extends MutationKeys<T>, P = MutationPayload<T[K]>> (payloadWithType: { type: K, payload: P }): void;
-  <K extends MutationKeys<T>, P = MutationPayload<T[K]>> (payloadWithType: { type: K, payload: P }, options: CommitOptionsThis): void;
-  <K extends MutationKeys<R>, P = MutationPayload<R[K]>> (payloadWithType: { type: K, payload: P }, options: CommitOptionsRoot): void;
+  <K extends MutationKeys<T>> (payloadWithType: { type: K, payload: MutationPayload<T[K]> }): void;
+  <K extends MutationKeys<T>> (payloadWithType: { type: K, payload: MutationPayload<T[K]> }, options: CommitOptionsThis): void;
+  <K extends MutationKeys<R>> (payloadWithType: { type: K, payload: MutationPayload<R[K]> }, options: CommitOptionsRoot): void;
 }
 
 export interface CommitOptionsThis { silent?: boolean; root?: false }
@@ -152,22 +154,22 @@ export interface CommitOptionsRoot { silent?: boolean; root: true }
 
 export interface Dispatch<T, R = T>
 {
-  <K extends ActionKeys<T>, P = ActionPayload<T[K]>, R = ActionResult<T[K]>> (type: K, payload?: P): Promise<R>;
-  <K extends ActionKeys<T>, P = ActionPayload<T[K]>, R = ActionResult<T[K]>> (type: K, payload: P | undefined, options: DispatchOptionsThis): Promise<R>;
-  <K extends ActionKeys<R>, P = ActionPayload<R[K]>, X = ActionResult<R[K]>> (type: K, payload: P | undefined, options: DispatchOptionsRoot): Promise<X>;
+  <K extends ActionKeys<T>> (type: K, payload?: ActionPayload<T[K]>): Promise<ActionResult<T[K]>>;
+  <K extends ActionKeys<T>> (type: K, payload: ActionPayload<T[K]> | undefined, options: DispatchOptionsThis): Promise<ActionResult<T[K]>>;
+  <K extends ActionKeys<R>> (type: K, payload: ActionPayload<R[K]> | undefined, options: DispatchOptionsRoot): Promise<ActionResult<R[K]>>;
   
-  <K extends ActionKeys<T>, P = ActionPayload<T[K]>, R = ActionResult<T[K]>> (payloadWithType: { type: K, payload: P }): Promise<R>;
-  <K extends ActionKeys<T>, P = ActionPayload<T[K]>, R = ActionResult<T[K]>> (payloadWithType: { type: K, payload: P }, options: DispatchOptionsThis): Promise<R>;
-  <K extends ActionKeys<R>, P = ActionPayload<R[K]>, X = ActionResult<R[K]>> (payloadWithType: { type: K, payload: P }, options: DispatchOptionsRoot): Promise<X>;
+  <K extends ActionKeys<T>> (payloadWithType: { type: K, payload: ActionPayload<T[K]> }): Promise<ActionResult<T[K]>>;
+  <K extends ActionKeys<T>> (payloadWithType: { type: K, payload: ActionPayload<T[K]> }, options: DispatchOptionsThis): Promise<ActionResult<T[K]>>;
+  <K extends ActionKeys<R>> (payloadWithType: { type: K, payload: ActionPayload<R[K]> }, options: DispatchOptionsRoot): Promise<ActionResult<R[K]>>;
 } 
 
 export interface DispatchOptionsThis { root?: false; }
 
 export interface DispatchOptionsRoot { root: true; }
 
-export type MutationSubscriber<T, S = StateFor<T>> = <K extends MutationKeys<T>, P = MutationPayload<T[K]>> (mutation: { type: K, payload?: P }, state: S) => void;
+export type MutationSubscriber<T> = <K extends MutationKeys<T>> (mutation: { type: K, payload?: MutationPayload<T[K]> }, state: StateFor<T>) => void;
 
-export type ActionSubscriber<T, S = StateFor<T>> = <K extends ActionKeys<T>, P = ActionPayload<T[K]>> (action: { type: K, payload?: P }, state: S) => void;
+export type ActionSubscriber<T> = <K extends ActionKeys<T>> (action: { type: K, payload?: ActionPayload<T[K]> }, state: StateFor<T>) => void;
 
 export interface ActionSubscribersObject<T> 
 {
@@ -175,12 +177,12 @@ export interface ActionSubscribersObject<T>
   after?: ActionSubscriber<T>;
 }
 
-export type Module<T, R = T, S = StateFor<T>> =
+export type Module<T, R = T> =
 {
   namespaced?: boolean;
   modules?: ModuleTree<R>;
-} & OptionalProperties<S, { 
-  state: S | (() => S) 
+} & OptionalProperties<StateFor<T>, { 
+  state: Resolvable<StateFor<T>>
 }> & OptionalProperties<GetterTree<T, R>, { 
   getters: GetterTree<T, R> 
 }> & OptionalProperties<MutationTree<T>, { 
