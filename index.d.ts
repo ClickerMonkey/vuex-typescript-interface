@@ -43,7 +43,7 @@ export type MutationKeys<S> = {
 }[keyof S];
 
 export type ActionKeys<S> = {
-  [K in keyof S]: S[K] extends Action<infer P, infer R, infer I> ? (I extends Promise<R> ?  K : never) : never;
+  [K in keyof S]: S[K] extends Action<infer P, infer R, infer I> ? (I extends Promise<any> ?  K : never) : never;
 }[keyof S];
 
 export type StateFor<T> = {
