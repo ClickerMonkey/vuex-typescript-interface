@@ -13,7 +13,6 @@ import Vuex from 'vuex-typescript-interface';
 
 Vue.use(Vuex); // works
 
-// ONLY GOTCHA
 new Vue({
   i18n,
   router,
@@ -95,6 +94,8 @@ const { firstName, lastName } = await store.dispatch('loadName', 'http://myname.
 It will work with modules as well!
 
 ```typescript
+import Vue, { Module } from 'vuex-typescript-interface';
+
 interface IRoot {
   name: string;
   setName (name: string): void;
@@ -104,8 +105,8 @@ interface IChild {
   clearName (): Promise<void>
 }
 
-const child: StoreOptions<IChild, IRoot> = {
-  namespaced: false, // namespacing doesn't work however... 
+const child: Module<IChild, IRoot> = {
+  namespaced: false, // namespacing doesn't work for commit/dispatch on root
   getters: {
     lowerName (state, getters, rootState) { // talking to rootState is type safe
       return rootState.name.toLowerCase();
@@ -138,7 +139,7 @@ To take advantage of that sweet type safety for mapping you can use `createNames
 You should use `createHelpers` instead of `mapState`, `mapGetters`, `mapActions`, and `mapMutations` since propery types cannot be added to them at this time.
 
 ```typescript
-// These functions require valid state/getter/mutations/actions.
+// These functions are type safe (require valid state/getter/mutations/actions)
 const { mapState, mapGetters, mapMutations, mapActions } = createNamespacedHelpers<IStore>('storeNamespace');
 const { mapState, mapGetters, mapMutations, mapActions } = createHelpers<IStore>();
 
