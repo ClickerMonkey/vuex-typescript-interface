@@ -1,5 +1,7 @@
 import Vue, { WatchOptions } from 'vue';
 
+import { install, mapState, mapMutations, mapGetters, mapActions } from 'vuex';
+
 export * from 'vuex';
 
 
@@ -201,6 +203,19 @@ export interface ModuleTree<R>
   [key: string]: Module<any, R>;
 }
 
+
+export type StateGetter<T, R = any> = (this: CustomVue, state: StateFor<T>, getters: GettersFor<T>) => R; 
+
+export type MutationIn<A extends any[], X, T, R = T> = (this: CustomVue, commit: Commit<T, R>, ...args: A) => X;
+
+export type MutationOut<A extends any[], X> = (...args: A) => X;
+
+export type ActionIn<A extends any[], X, T, R = T> = (this: CustomVue, dispatch: Dispatch<T, R>, ...args: A) => Promise<X>;
+
+export type ActionOut<A extends any[], X> = (...args: A) => Promise<X>;
+
+
+
 export declare function createNamespacedHelpers<T, R = T> (namespace: string): Mappers<T, R>;
 
 export interface Mappers<T, R> 
@@ -211,21 +226,15 @@ export interface Mappers<T, R>
   mapActions: MapperForActions<T, R>
 }
 
-export type StateGetter<T, R = any> = (this: CustomVue, state: StateFor<T>, getters: GettersFor<T>) => R; 
-
 export interface MapperForGetters<T> 
 {
-  // mapGetters([ 'getter1', 'getter2' ])
   <K extends GetterKeys<T>, U = { [P in K]: () => T[P] }>(keys: K[]): U;
-  // mapGetters({ getterAlias: 'getter1', getter2: 'getter2' })
   <K extends GetterKeys<T>, M extends { [key: string]: K }>(map: M): { [P in keyof M]: () => M[P] extends K ? T[M[P]] : never };
 }
 
 export interface MapperForState<T> 
 {
-  // mapState([ 'var1', 'var2' ])
   <K extends StateKeys<T>, U = { [P in K]: () => T[P] }>(keys: K[]): U;
-  // mapState({ varAlias: 'var1', var2: 'var2', varCustom (state, getters): type })
   <K extends StateKeys<T>, M extends { [key: string]: K | StateGetter<T> }>(map: M): {
     [P in keyof M]: () => M[P] extends K ? T[M[P]] : (
       M[P] extends StateGetter<T, infer R> ? R : never
@@ -233,15 +242,9 @@ export interface MapperForState<T>
   }
 }
 
-export type MutationIn<A extends any[], X, T, R = T> = (this: CustomVue, commit: Commit<T, R>, ...args: A) => X;
-
-export type MutationOut<A extends any[], X> = (...args: A) => X;
-
 export interface MapperForMutations<T, R = T> 
 {
-  // mapMutations([ 'mutation1', 'mutation2' ])
   <K extends MutationKeys<T>, U = { [P in K]: (payload?: MutationPayload<T[P]>) => void }>(keys: K[]): U;
-  // mapMutations({ mutationAlias: 'mutation1', mutation2: 'mutation2', mutationCustom (commit, arg1: type1, argN: typeN): void })
   <K extends MutationKeys<T>, M extends { [key: string]: K | MutationIn<any[], any, T, R> }>(map: M): {
     [P in keyof M]: M[P] extends keyof T
       ? (payload?: MutationPayload<T[M[P]]>) => void
@@ -249,15 +252,9 @@ export interface MapperForMutations<T, R = T>
   };
 }
 
-export type ActionIn<A extends any[], X, T, R = T> = (this: CustomVue, dispatch: Dispatch<T, R>, ...args: A) => Promise<X>;
-
-export type ActionOut<A extends any[], X> = (...args: A) => Promise<X>;
-
 export interface MapperForActions<T, R = T> 
 {
-  // mapActions([ 'action1', 'action2' ])
   <K extends ActionKeys<T>, U = { [P in K]: (payload?: ActionPayload<T[P]>) => Promise<ActionResult<T[P]>> }>(keys: K[]): U;
-  // mapActions({ actionAlias: 'action1', action2: 'action2', actionCustom (dispatch, arg1: type1, argN: typeN): Promise<result> })
   <K extends ActionKeys<T>, M extends { [key: string]: K | ActionIn<any[], any, T, R> }>(map: M): {
     [P in keyof M]: M[P] extends keyof T 
       ? (payload?: ActionPayload<T[M[P]]>) => Promise<ActionResult<T[M[P]]>>
@@ -265,9 +262,62 @@ export interface MapperForActions<T, R = T>
   };
 }
 
+// This function is defined in index.js and is needed for typesafe mappers.
+export function createHelpers<T, R = T>(): MappersWithNamespace<T, R>;
+
+export interface MappersWithNamespace<T, R> 
+{
+  mapState: MapperForState<T> & MapperForStateWithNamespace<T>
+  mapGetters: MapperForGetters<T> & MapperForGettersWithNamespace<T>
+  mapMutations: MapperForMutations<T, R> & MapperForMutationsWithNamespace<T, R>
+  mapActions: MapperForActions<T, R> & MapperForActionsWithNamespace<T, R>
+}
+
+export interface MapperForGettersWithNamespace<T> 
+{
+  <K extends GetterKeys<T>, U = { [P in K]: () => T[P] }>(namespace: string, keys: K[]): U;
+  <K extends GetterKeys<T>, M extends { [key: string]: K }>(namespace: string, map: M): { [P in keyof M]: () => M[P] extends K ? T[M[P]] : never };
+}
+
+export interface MapperForStateWithNamespace<T> 
+{
+  <K extends StateKeys<T>, U = { [P in K]: () => T[P] }>(namespace: string, keys: K[]): U;
+  <K extends StateKeys<T>, M extends { [key: string]: K | StateGetter<T> }>(namespace: string, map: M): {
+    [P in keyof M]: () => M[P] extends K ? T[M[P]] : (
+      M[P] extends StateGetter<T, infer R> ? R : never
+    )
+  }
+}
+
+export interface MapperForMutationsWithNamespace<T, R = T> 
+{
+  <K extends MutationKeys<T>, U = { [P in K]: (payload?: MutationPayload<T[P]>) => void }>(namespace: string, keys: K[]): U;
+  <K extends MutationKeys<T>, M extends { [key: string]: K | MutationIn<any[], any, T, R> }>(namespace: string, map: M): {
+    [P in keyof M]: M[P] extends keyof T
+      ? (payload?: MutationPayload<T[M[P]]>) => void
+      : (M[P] extends MutationIn<infer A, infer X, T, R> ? MutationOut<A, X> : never)
+  };
+}
+
+export interface MapperForActionsWithNamespace<T, R = T> 
+{
+  <K extends ActionKeys<T>, U = { [P in K]: (payload?: ActionPayload<T[P]>) => Promise<ActionResult<T[P]>> }>(namespace: string, keys: K[]): U;
+  <K extends ActionKeys<T>, M extends { [key: string]: K | ActionIn<any[], any, T, R> }>(namespace: string, map: M): {
+    [P in keyof M]: M[P] extends keyof T 
+      ? (payload?: ActionPayload<T[M[P]]>) => Promise<ActionResult<T[M[P]]>>
+      : (M[P] extends ActionIn<infer A, infer X, T, R> ? ActionOut<A, X> : never)
+  };
+}
+
+
 declare const _default: {
-  Store: typeof Store
-  createNamespacedHelpers: typeof createNamespacedHelpers
+  Store: typeof Store;
+  install: typeof install;
+  mapState: typeof mapState,
+  mapMutations: typeof mapMutations,
+  mapGetters: typeof mapGetters,
+  mapActions: typeof mapActions,
+  createNamespacedHelpers: typeof createNamespacedHelpers,
 };
 
 export default _default;
