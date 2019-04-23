@@ -1,12 +1,11 @@
-import Vue, { WatchOptions } from 'vue';
-
-import { install, mapState, mapMutations, mapGetters, mapActions } from 'vuex';
-
-export * from 'vuex';
+import _Vue, { WatchOptions } from 'vue';
 
 
 
-export type CustomVue = Vue & { [key: string]: any };
+export declare function install(Vue: typeof _Vue): void;
+
+
+export type CustomVue = _Vue & { [key: string]: any };
 
 export type Mutation<P, R = void> = (payload: P) => R;
 
@@ -91,40 +90,40 @@ export type StoreOptions<T, R = T> =
   actions: ActionTree<T, R> 
 }>;
 
-export declare class Store<T, R = T>
+export declare class Store<T>
 {
-  constructor(options: StoreOptions<T, R>);
+  constructor(options: StoreOptions<T>);
 
   readonly state: StateFor<T>;
   readonly getters: GettersFor<T>;
 
   replaceState(state: StateFor<T>): void;
 
-  commit: Commit<T, R>;
-  dispatch: Dispatch<T, R>;
+  commit: Commit<T, T>;
+  dispatch: Dispatch<T, T>;
 
   subscribe (subscriber: MutationSubscriber<T>): () => void;
   subscribeAction (subscriber: ActionSubscriber<T> | ActionSubscribersObject<T>): () => void;
   watch<W> (getter: (state: StateFor<T>, getters: GettersFor<T>) => W, cb: (value: W, oldValue: W) => void, options?: WatchOptions): () => void;
 
-  registerModule<N> (path: string, module: Module<N, R>, options?: ModuleOptions): void;
-  registerModule<N> (path: string[], module: Module<N, R>, options?: ModuleOptions): void;
+  registerModule<N> (path: string, module: Module<N, T>, options?: ModuleOptions): void;
+  registerModule<N> (path: string[], module: Module<N, T>, options?: ModuleOptions): void;
 
   unregisterModule (path: string): void;
   unregisterModule (path: string[]): void;
 
-  hotUpdate (update: HotUpdate<T, R>): void;
+  hotUpdate (update: HotUpdate<T>): void;
 }
 
-export type HotUpdate<T, R = T> =
+export type HotUpdate<T> =
 {
-  modules?: ModuleTree<R>;
-} & OptionalProperties<GetterTree<T, R>, { 
-  getters: Partial<GetterTree<T, R>>
+  modules?: ModuleTree<T>;
+} & OptionalProperties<GetterTree<T, T>, { 
+  getters: Partial<GetterTree<T, T>>
 }> & OptionalProperties<MutationTree<T>, { 
   mutations: Partial<MutationTree<T>>
-}> & OptionalProperties<ActionTree<T, R>, { 
-  actions: Partial<ActionTree<T, R>>
+}> & OptionalProperties<ActionTree<T, T>, { 
+  actions: Partial<ActionTree<T, T>>
 }>;
 
 export interface ActionContext<T, R = T> 
@@ -214,7 +213,7 @@ export type ActionIn<A extends any[], X, T, R = T> = (this: CustomVue, dispatch:
 
 export type ActionOut<A extends any[], X> = (...args: A) => Promise<X>;
 
-
+export declare function createHelpers<T, R = T>(): MappersWithNamespace<T, R>;
 
 export declare function createNamespacedHelpers<T, R = T> (namespace: string): Mappers<T, R>;
 
@@ -262,9 +261,6 @@ export interface MapperForActions<T, R = T>
   };
 }
 
-// This function is defined in index.js and is needed for typesafe mappers.
-export function createHelpers<T, R = T>(): MappersWithNamespace<T, R>;
-
 export interface MappersWithNamespace<T, R> 
 {
   mapState: MapperForState<T> & MapperForStateWithNamespace<T>
@@ -309,15 +305,15 @@ export interface MapperForActionsWithNamespace<T, R = T>
   };
 }
 
-
 declare const _default: {
-  Store: typeof Store;
-  install: typeof install;
-  mapState: typeof mapState,
-  mapMutations: typeof mapMutations,
-  mapGetters: typeof mapGetters,
-  mapActions: typeof mapActions,
-  createNamespacedHelpers: typeof createNamespacedHelpers,
+  Store: typeof Store,
+  install: typeof install,
+  mapState: MapperForState<any> & MapperForStateWithNamespace<any>,
+  mapGetters: MapperForGetters<any> & MapperForGettersWithNamespace<any>,
+  mapMutations: MapperForMutations<any> & MapperForMutationsWithNamespace<any>,
+  mapActions: MapperForActions<any, any> & MapperForActionsWithNamespace<any, any>,
+  createHelpers: typeof createHelpers,
+  createNamespacedHelpers: typeof createNamespacedHelpers
 };
 
 export default _default;
