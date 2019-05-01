@@ -9,14 +9,14 @@ Through the magic of Typescript, this library makes Vuex as typesafe as currentl
 ```typescript
 import Vuex from 'vuex-typescript-interface';
 
-// new Vuex.Store like normal
+// store = new Vuex.Store like normal
 
 Vue.use(Vuex); // works
 
 new Vue({
   i18n,
   router,
-  store: store as any, // you have to cast it as any here, since the Vuex store is not compatible with mine - and it can't be overriden.
+  store,
   render: h => h(App)
 }).$mount('#app')
 ```
@@ -192,4 +192,4 @@ mapActions({
 
 ### Restrictions
 - A mutation/action could require an argument, but at the moment it will appear optional.
-- Namespaced mutations/actions/mappings don't work on root state.
+- Namespaced mutations/actions/mappings don't work on root state when using `createHelpers`.
