@@ -11,5 +11,9 @@
     "noImplicitAny": true,
     "noImplicitThis": true,
     "strictNullChecks": true
-  }
+  },
+  "files": [
+    "test.ts",
+    "index.d.ts"
+  ]
 }
