@@ -1,5 +1,5 @@
 
-import { Module, Store, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit } from './index';
+import { Module, Store, path, createNamespacedHelpers, createHelpers, mapState } from './index';
 
 interface MergedModule {
   merged: number;
@@ -188,6 +188,13 @@ interface IFullStore {
       created_at: Date | null;
       readonly age: number;
       setProfile (profile?: { email: string, created_at: Date }): void;
+    },
+    named: {
+      namespaced: true;
+      variable: string;
+      readonly length: number;
+      setVariable (variable: string): void;
+      loadVariable (from: boolean): Promise<string>;
     }
   }
 };
@@ -238,6 +245,51 @@ const full = new Store<IFullStore>({
           state.created_at = profile ? profile.created_at : null;
         }
       }
+    },
+    named: {
+      namespaced: true,
+      state: {
+        variable: ''
+      },
+      getters: {
+        length (state, getters) {
+          return state.variable.length;
+        }
+      },
+      mutations: {
+        setVariable (state, value) {
+          state.variable = value;
+        }
+      },
+      actions: {
+        async loadVariable (context, from) {
+          return context.state.variable;
+        }
+      }
     }
   }
 });
+
+const p = path<IFullStore>();
+const m = p.module('named');
+const mp = m.get()
+const s = m.state('variable').get();
+const g = m.getter('length').get();
+const u = m.mutation('setVariable').get();
+const a = m.action('loadVariable').get();
+
+full.commit(u, 'newValue!');
+
+const rr = full.dispatch(a, true);
+
+const maps1 = createNamespacedHelpers(mp);
+const m1 = maps1.mapState(['variable']);
+const m2 = maps1.mapActions(['loadVariable']);
+const m3 = maps1.mapGetters(['length']);
+const m4 = maps1.mapMutations(['setVariable']);
+
+const maps2 = createHelpers<IFullStore>();
+const n1 = maps2.mapState(['user']);
+const n2 = maps2.mapState(mp, ['variable']);
+const n3 = maps2.mapActions(mp, ['loadVariable']);
+const n4 = mapState(mp, ['variable']);
