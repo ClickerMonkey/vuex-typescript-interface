@@ -1,5 +1,5 @@
 
-import { Module, Store, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit } from './index';
+import { Module, Store, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit, ActionPayload, ActionKeysNoPayload, MutationKeysNoPayload, MutationKeysWithPayload, MutationPayload, IsMutation } from './index';
 
 interface MergedModule {
   merged: number;
@@ -41,6 +41,7 @@ interface RootStore {
   readonly rootGetter: [string, string];
   rootMutation (payload: [string, string]): void;
   rootAction (): Promise<string>;
+  rootActionExplodePayload (payload: {x: number, y: number}): Promise<boolean>;
   modules: {
     sub: SubModule;
     merged: MergedModule;
@@ -132,7 +133,7 @@ const sub: Module<SubModule, RootStore> = {
         }
       },
       actions: {
-        async subsubAction(context, payload): Promise<number> {
+        async subsubAction(context): Promise<number> {
           return context.state.subsub.length;
         }
       }
@@ -161,10 +162,13 @@ const root = new Store<RootStore>({
     }
   },
   actions: {
-    async rootAction (context): Promise<string> {
+    async rootAction (context, payload): Promise<string> {
       context.commit('mergedMutation', 33);
       context.commit('mergedmergedMutation', 33);
       return context.state.root.toUpperCase();
+    },
+    async rootActionExplodePayload (context, { x, y }): Promise<boolean> {
+      return x === y;
     }
   },
   modules: {
@@ -174,21 +178,24 @@ const root = new Store<RootStore>({
 });
 
 
+interface IAuthModule {
+  logout (): Promise<void>;
+  login (creds: {username: string, password: string}): Promise<boolean>;
+}
+
+interface IProfileModule {
+  email: string | null;
+  created_at: Date | null;
+  readonly age: number;
+  setProfile (profile?: { email: string, created_at: Date }): void;
+}
 
 interface IFullStore {
   user: string | null;
   setUser (user: string | null): void;
   modules: {
-    auth: {
-      logout (): Promise<void>;
-      login (creds: {username: string, password: string}): Promise<boolean>;
-    },
-    profile: {
-      email: string | null;
-      created_at: Date | null;
-      readonly age: number;
-      setProfile (profile?: { email: string, created_at: Date }): void;
-    }
+    auth: IAuthModule,
+    profile: IProfileModule
   }
 };
 
@@ -241,3 +248,94 @@ const full = new Store<IFullStore>({
     }
   }
 });
+
+
+type A = MutationKeysNoPayload<IProfileModule>; // none
+type B = MutationKeysWithPayload<IProfileModule>; // setProfile
+type C = MutationPayload<(profile?: { email: string, created_at: Date }) => void>;
+type C2 = MutationPayload<(profile: { email: string, created_at: Date }) => void>;
+type C3 = MutationPayload<() => void>;
+type E = MutationPayload<() => void>;
+type D = ActionPayload<(profile?: { email: string, created_at: Date }) => Promise<void>>;
+
+type F1 = ((x: number) => void) extends (() => void) ? true : false; // false
+type F2 = ((x?: number) => void) extends (() => void) ? true : false; // true
+type F3 = ((x?: number) => void) extends ((x?: any) => void) ? true : false; // true
+type F4 = ((x: number) => void) extends ((x?: any) => void) ? true : false; // true
+type F5 = ((x: number) => void) extends ((x: any) => void) ? true : false; // true
+type F6 = ((x?: number) => void) extends ((x: any) => void) ? true : false; // true
+type F7 = (() => void) extends ((x: any) => void) ? true : false; // true
+type F8 = (() => void) extends ((x: never) => void) ? true : false; // true
+type F9 = [() => void] extends [(x: any) => void] ? true : false; // true
+type FA = (() => void) extends ((x: number) => void) ? true : false; // true
+
+type G1 = IsMutation<false, true, false>; // false
+type G2 = IsMutation<() => void, true, false>; // true
+type G3 = IsMutation<(x: any) => void, true, false>; // true
+type G4 = IsMutation<(x?: any) => void, true, false>; // true
+type G5 = IsMutation<(x?: any) => Promise<any>, true, false>; // false
+type G6 = IsMutation<(x?: any) => Promise<any>, true, false>; // false
+
+type H1 = ((x?: number) => void) extends ((p: infer P) => void) ? P : [never]; // number | undefined
+type H2 = (() => void) extends ((p: infer P) => void) ? P : [never]; // unknown
+type H3 = H2 extends unknown ? true : false; // true
+type H4 = unknown extends 43 ? true : false; // false
+type H5 = unknown extends H2 ? true : false; // true
+type H6 = unknown extends any ? true : false; // true NO!
+type HB = unknown extends null ? true : false; // false
+type HC = unknown extends {} ? true : false; // false
+type HD = unknown extends object ? true : false; // false
+type H9 = any extends unknown ? true : false; // true
+type H7 = unknown extends unknown ? true : false; // true
+type H8 = unknown extends null ? true : false; // false
+type HA = [unknown] extends [any] ? true : false; // true NO!
+type GetArgs<T> = T extends (...args: infer A) => infer R ? A : never;
+type HE = GetArgs<() => void>;
+type HF = GetArgs<(x?: number, y?: boolean) => string>;
+type HG = [] extends [] ? true : false; // true
+type HH = [3] extends [] ? true : false; // false
+type HI = [] extends [3] ? true : false; // false
+
+type SingleItem<T, N = never> = T extends [infer E] ? E : N;
+type HJ = SingleItem<[]>; // never
+type HK = SingleItem<[3]>; // 3
+type HL = SingleItem<[3, true]>; // never
+type GetArg<T> = T extends (...any: infer A) => void ? (A extends ([infer E] | [(infer E)?]) ? E : never) : never;
+type HM = GetArg<(x?: number) => void>;
+type HN = GetArgs<(x?: number) => void>;
+type HO = HN extends [(infer E)?] ? E : never;
+
+type I0 = 42 extends never ? true : false; // false
+type I1 = number extends never ? true : false; // false
+type I2 = any extends never ? true : false; // boolean
+type I3 = undefined extends never ? true : false; // false
+type I4 = unknown extends never ? true : false; // false
+type I5 = never extends never ? true : false; // true
+type I6 = {} extends never ? true : false; // false
+type I7 = null extends never ? true : false; // false
+
+type J0 = never extends 42 ? true : false; // true
+type J1 = never extends number ? true : false; // true
+type J2 = never extends any ? true : false; // true
+type J3 = never extends undefined ? true : false; // true
+type J4 = never extends unknown ? true : false; // true
+type J5 = never extends never ? true : false; // true
+type J6 = never extends {} ? true : false; // true
+type J7 = never extends null ? true : false; // true
+
+type K4 = [undefined] extends [] ? true : false; // false
+
+
+full.dispatch('login', undefined); // ERROR!
+full.dispatch('login', { username: 'A', password: 'B'} );
+full.dispatch('logout', 34); // ERROR!
+full.dispatch('logout', undefined); // ERROR!
+full.dispatch('logout');
+
+full.commit('setUser', '543');
+full.commit('setUser', undefined); // ERROR!
+full.commit('setUser', 23); // ERROR!
+full.commit('setUser', null);
+full.commit('setProfile', undefined); 
+full.commit('setProfile', { email: 'C', created_at: new Date() })
+full.commit('setProfile'); // ERROR! 
