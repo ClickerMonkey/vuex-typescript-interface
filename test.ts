@@ -1,5 +1,5 @@
 
-import { Module, Store, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit, ActionPayload, ActionKeysNoPayload, MutationKeysNoPayload, MutationKeysWithPayload, MutationPayload, IsMutation } from './index';
+import { Module, Store, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit, ActionPayload, ActionKeysNoPayload, MutationKeysNoPayload, MutationKeysWithPayload, MutationPayload, IsMutation, ActionTree, ActionKeys, ActionKeysRoot, ActionPayloadRoot, MutationKeysRoot, MutationPayloadRoot } from './index';
 
 interface MergedModule {
   merged: number;

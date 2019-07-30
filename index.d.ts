@@ -75,6 +75,19 @@ export type MutationPayload<F, N = never> = F extends (...any: infer A) => void
   ? GetSingleElement<A, N>
   : N;
 
+export type MutationPayloadRoot<R, A, N = null | undefined> = {
+  [K in keyof R]: K extends A
+    ? MutationPayload<R[K], N>
+    : K extends 'modules'
+      ? { [M in keyof R[K]]: {
+          [E in keyof R[K][M]]: E extends A
+            ? MutationPayload<R[K][M][E], N>
+            : never
+          }[keyof R[K][M]]
+        }[keyof R[K]]
+      : never
+}[keyof R];
+
 export type Action<P, R, I = Promise<R>> = (payload: P) => I;
 
 export type IsAction<A, Y, N = never> = A extends Action<infer P, infer R, infer I> ? (I extends Promise<any> ? Y : N) : N;
@@ -83,8 +96,33 @@ export type ActionPayload<F, N = never> = F extends (...args: infer A) => Promis
   ? GetSingleElement<A, N>
   : N;
 
+export type ActionPayloadRoot<R, A, N = null | undefined> = {
+  [K in keyof R]: K extends A
+    ? ActionPayload<R[K], N>
+    : K extends 'modules'
+      ? { [M in keyof R[K]]: {
+          [E in keyof R[K][M]]: E extends A
+            ? ActionPayload<R[K][M][E], N>
+            : never
+          }[keyof R[K][M]]
+        }[keyof R[K]]
+      : never
+}[keyof R];
+
 export type ActionResult<A> = A extends Action<infer P, infer R> ? R : never;
 
+export type ActionResultRoot<R, A> = {
+  [K in keyof R]: K extends A
+    ? ActionResult<R[K]>
+    : K extends 'modules'
+      ? { [M in keyof R[K]]: {
+          [E in keyof R[K][M]]: E extends A
+            ? ActionResult<R[K][M][E]>
+            : never
+          }[keyof R[K][M]]
+        }[keyof R[K]]
+      : never
+}[keyof R];
 
 
 export type StateKeys<T> = {
@@ -111,6 +149,12 @@ export type MutationKeysNoPayload<S> = {
   [K in keyof S]: IsMutation<S[K], MutationPayload<S[K]> extends never ? K : never>
 }[keyof S];
 
+export type MutationKeysRoot<R> = MutationKeys<R> | {
+  [P in keyof R]: P extends 'modules'
+    ? { [K in keyof R[P]]: MutationKeys<R[P][K]> }[keyof R[P]]
+    : never;
+}[keyof R];
+
 export type ActionKeys<S> = {
   [K in keyof S]: IsAction<S[K], K, never>
 }[keyof S];
@@ -122,6 +166,12 @@ export type ActionKeysWithPayload<S> = {
 export type ActionKeysNoPayload<S> = {
   [K in keyof S]: IsAction<S[K], ActionPayload<S[K]> extends never ? K : never>
 }[keyof S];
+
+export type ActionKeysRoot<R> = ActionKeys<R> | {
+  [P in keyof R]: P extends 'modules'
+    ? { [K in keyof R[P]]: ActionKeys<R[P][K]> }[keyof R[P]]
+    : never;
+}[keyof R];
 
 export type ModuleKeys<T> = {
   [P in keyof T]: P extends 'modules'
@@ -298,8 +348,8 @@ export type MergedRootCommitFor<R> = {
 };
 
 export type RootCommitFor<R> = {
-  <K extends MutationKeys<R>> (type: K, payload: MutationPayload<R[K]>, options: CommitOptionsRoot): void;
-  <K extends MutationKeys<R>> (payloadWithType: { type: K, payload: MutationPayload<R[K]> }, options: CommitOptionsRoot): void;
+  <K extends MutationKeysRoot<R>> (type: K, payload: MutationPayloadRoot<R, K>, options: CommitOptionsRoot): void;
+  <K extends MutationKeysRoot<R>> (payloadWithType: { type: K, payload: MutationPayload<R, K> }, options: CommitOptionsRoot): void;
 };
 
 export type RootCommit<R> = RootCommitFor<R> & Intersect<MergedRootCommitFor<R>>;
@@ -326,11 +376,11 @@ export type DispatchFor<T, R = T> = {
   <K extends ActionKeysNoPayload<T>> (type: K): Promise<ActionResult<T[K]>>;
   <K extends ActionKeysWithPayload<T>> (type: K, payload: ActionPayload<T[K]>): Promise<ActionResult<T[K]>>;
   <K extends ActionKeys<T>> (type: K, payload: ActionPayload<T[K]>, options: DispatchOptionsThis): Promise<ActionResult<T[K]>>;
-  <K extends ActionKeys<R>> (type: K, payload: ActionPayload<R[K]>, options: DispatchOptionsRoot): Promise<ActionResult<R[K]>>;
+  <K extends ActionKeysRoot<R>> (type: K, payload: ActionPayloadRoot<R, K>, options: DispatchOptionsRoot): Promise<ActionResultRoot<R, K>>;
   
   <K extends ActionKeys<T>> (payloadWithType: { type: K, payload: ActionPayload<T[K]> }): Promise<ActionResult<T[K]>>;
   <K extends ActionKeys<T>> (payloadWithType: { type: K, payload: ActionPayload<T[K]> }, options: DispatchOptionsThis): Promise<ActionResult<T[K]>>;
-  <K extends ActionKeys<R>> (payloadWithType: { type: K, payload: ActionPayload<R[K]> }, options: DispatchOptionsRoot): Promise<ActionResult<R[K]>>;
+  <K extends ActionKeysRoot<R>> (payloadWithType: { type: K, payload: ActionPayloadRoot<R, K> }, options: DispatchOptionsRoot): Promise<ActionResultRoot<R, K>>;
 } 
 
 export type Dispatch<T, R = T> = DispatchFor<T, R> & Intersect<MergedDispatchFor<T, R>>;
