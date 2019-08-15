@@ -267,5 +267,4 @@ mapActions({
 
 
 ### Restrictions
-- A mutation/action could require a payload, but at the moment it will appear optional.
 - Namespaced modules don't work.
