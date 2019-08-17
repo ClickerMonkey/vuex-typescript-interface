@@ -13,7 +13,6 @@ import './vue';
  * I was calling Flatten multiple times but that results in TypeScript dying.
  * 
  * TODO 
- * - Namespace support, obviously. Requires TS improvements.
  * - Root store $store has proper types. Requires TS improvements.
  * - Nested module merging. Requires TS improvements.
  * - Namespaced actions marked with root=true need to be placed in root store.
@@ -469,15 +468,15 @@ export class Path<T, S>
 {
   module<M extends NamespacedModuleKeys<T>>(module: M): Path<GetModule<T, M>, S>;
 
-  state<K extends StateKeys<T>>(name: K): { get(): StatePath<T, S, K, T[K]> };
+  state<K extends StateKeys<T>>(name: K): StatePath<T, S, K, T[K]>;
 
-  getter<K extends GetterKeys<T>>(name: K): { get(): GetterPath<T, S, K, T[K]> };
+  getter<K extends GetterKeys<T>>(name: K): GetterPath<T, S, K, T[K]>
 
-  mutation<K extends MutationKeys<T>>(name: K): { get(): MutationPath<T, S, K, MutationPayload<T[K]>> };
+  mutation<K extends MutationKeys<T>>(name: K): MutationPath<T, S, K, MutationPayload<T[K]>>;
 
-  action<K extends ActionKeys<T>>(name: K): { get(): ActionPath<T, S, K, ActionPayload<T[K]>, ActionResult<T[K]>> };
+  action<K extends ActionKeys<T>>(name: K): ActionPath<T, S, K, ActionPayload<T[K]>, ActionResult<T[K]>>;
 
-  get(): ModulePath<T, S>
+  get(): string;
 }
 
 export class StatePath<T, S, K, V> { faux: string }
@@ -488,22 +487,32 @@ export class MutationPath<T, S, K, P> { faux: string }
 
 export class ActionPath<T, S, K, P, R> { faux: string }
 
-export class ModulePath<T, S> { faux: string }
-
 
 export type StateGetter<T, R = any> = (this: CustomVue, state: StateFor<T>, getters: GettersFor<T>) => R; 
 
 export type MutationIn<A extends any[], X, T, R = T> = (this: CustomVue, commit: Commit<T, R>, ...args: A) => X;
 
-export type MutationOut<A extends any[], X> = (...args: A) => X;
+export type MutationOut<A extends any[], X> = A extends []
+  ? () => X
+  : (...args: A) => X;
+
+export type MutationMapped<M> = MutationPayload<M> extends never
+  ? () => void
+  : (payload: MutationPayload<M>) => void;
 
 export type ActionIn<A extends any[], X, T, R = T> = (this: CustomVue, dispatch: Dispatch<T, R>, ...args: A) => Promise<X>;
 
-export type ActionOut<A extends any[], X> = (...args: A) => Promise<X>;
+export type ActionOut<A extends any[], X> = A extends []
+  ? () => Promise<X>
+  : (...args: A) => Promise<X>;
+
+export type ActionMapped<A> = ActionPayload<A> extends never
+  ? () => Promise<ActionResult<A>>
+  : (payload: ActionPayload<A>) => Promise<ActionResult<A>>;
 
 export declare function createHelpers<T, R = T>(): MappersWithNamespace<T, R>;
 
-export declare function createNamespacedHelpers<T, R = T> (namespace: ModulePath<T, R>): Mappers<T, R>;
+export declare function createNamespacedHelpers<T, R = T> (namespace: Path<T, R>): Mappers<T, R>;
 
 export interface Mappers<T, R> 
 {
@@ -518,7 +527,9 @@ export interface MapperForGetters<T>
   <K extends GetterKeys<T>, U = { [P in K]: () => T[P] }>(keys: K[]): U;
 
   <K extends GetterKeys<T>, M extends { [key: string]: K }>(map: M): { 
-    [P in keyof M]: () => M[P] extends K ? T[M[P]] : never 
+    [P in keyof M]: () => M[P] extends K 
+      ? T[M[P]] 
+      : never 
   };
 }
 
@@ -527,31 +538,37 @@ export interface MapperForState<T>
   <K extends StateKeys<T>, U = { [P in K]: () => T[P] }>(keys: K[]): U;
 
   <K extends StateKeys<T>, M extends { [key: string]: K | StateGetter<T> }>(map: M): {
-    [P in keyof M]: () => M[P] extends K ? T[M[P]] : (
-      M[P] extends StateGetter<T, infer R> ? R : never
-    )
+    [P in keyof M]: () => M[P] extends K 
+      ? T[M[P]] 
+      : M[P] extends StateGetter<T, infer R> 
+        ? R 
+        : never
   }
 }
 
 export interface MapperForMutations<T, R = T> 
 {
-  <K extends MutationKeys<T>, U = { [P in K]: (payload: MutationPayload<T[P]>) => void }>(keys: K[]): U;
+  <K extends MutationKeys<T>, U = { [P in K]: MutationMapped<T[P]> }>(keys: K[]): U;
 
   <K extends MutationKeys<T>, M extends { [key: string]: K | MutationIn<any[], any, T, R> }>(map: M): {
     [P in keyof M]: M[P] extends keyof T
-      ? (payload: MutationPayload<T[M[P]]>) => void
-      : (M[P] extends MutationIn<infer A, infer X, T, R> ? MutationOut<A, X> : never)
+      ? MutationMapped<T[M[P]]>
+      : M[P] extends MutationIn<infer A, infer X, T, R> 
+        ? MutationOut<A, X> 
+        : never
   };
 }
 
 export interface MapperForActions<T, R = T> 
 {
-  <K extends ActionKeys<T>, U = { [P in K]: (payload: ActionPayload<T[P]>) => Promise<ActionResult<T[P]>> }>(keys: K[]): U;
+  <K extends ActionKeys<T>, U = { [P in K]: ActionMapped<T[P]> }>(keys: K[]): U;
 
   <K extends ActionKeys<T>, M extends { [key: string]: K | ActionIn<any[], any, T, R> }>(map: M): {
     [P in keyof M]: M[P] extends keyof T 
-      ? (payload: ActionPayload<T[M[P]]>) => Promise<ActionResult<T[M[P]]>>
-      : (M[P] extends ActionIn<infer A, infer X, T, R> ? ActionOut<A, X> : never)
+      ? ActionMapped<T[M[P]]>
+      : M[P] extends ActionIn<infer A, infer X, T, R> 
+        ? ActionOut<A, X>
+        : never
   };
 }
 
@@ -565,43 +582,51 @@ export interface MappersWithNamespace<T, R>
 
 export interface MapperForGettersWithNamespace<T> 
 {
-  <M, K extends GetterKeys<M>, U = { [P in K]: () => M[P] }>(namespace: ModulePath<M, T>, keys: K[]): U;
+  <M, K extends GetterKeys<M>, U = { [P in K]: () => M[P] }>(namespace: Path<M, T>, keys: K[]): U;
 
-  <M, K extends GetterKeys<M>, N extends { [key: string]: K }>(namespace: ModulePath<M, T>, map: N): { 
-    [P in keyof N]: () => N[P] extends K ? M[N[P]] : never 
+  <M, K extends GetterKeys<M>, N extends { [key: string]: K }>(namespace: Path<M, T>, map: N): { 
+    [P in keyof N]: () => N[P] extends K 
+      ? M[N[P]] 
+      : never 
   };
 }
 
 export interface MapperForStateWithNamespace<T> 
 {
-  <M, K extends StateKeys<M>, U = { [P in K]: () => M[P] }>(namespace: ModulePath<M, T>, keys: K[]): U;
+  <M, K extends StateKeys<M>, U = { [P in K]: () => M[P] }>(namespace: Path<M, T>, keys: K[]): U;
 
-  <M, K extends StateKeys<M>, N extends { [key: string]: K | StateGetter<M> }>(namespace: ModulePath<M, T>, map: N): {
-    [P in keyof N]: () => N[P] extends K ? M[N[P]] : (
-      N[P] extends StateGetter<T, infer R> ? R : never
-    )
+  <M, K extends StateKeys<M>, N extends { [key: string]: K | StateGetter<M> }>(namespace: Path<M, T>, map: N): {
+    [P in keyof N]: () => N[P] extends K 
+      ? M[N[P]]
+      : N[P] extends StateGetter<T, infer R> 
+        ? R 
+        : never
   }
 }
 
-export interface MapperForMutationsWithNamespace<T, R = T> 
+export interface MapperForMutationsWithNamespace<T, R = T>
 {
-  <K extends MutationKeys<T>, U = { [P in K]: (payload: MutationPayload<T[P]>) => void }>(namespace: string, keys: K[]): U;
-                     
-  <K extends MutationKeys<T>, M extends { [key: string]: K | MutationIn<any[], any, T, R> }>(namespace: string, map: M): {
-    [P in keyof M]: M[P] extends keyof T
-      ? (payload: MutationPayload<T[M[P]]>) => void
-      : (M[P] extends MutationIn<infer A, infer X, T, R> ? MutationOut<A, X> : never)
+  <M, K extends MutationKeys<M>, U = { [P in K]: MutationMapped<M[P]> }>(namespace: Path<M, T>, keys: K[]): U;
+
+  <M, K extends MutationKeys<M>, N extends { [key: string]: K | MutationIn<any[], any, M, R> }>(namespace: Path<M, T>, map: N): {
+    [P in keyof N]: N[P] extends K
+      ? MutationMapped<M[N[P]]>
+      : N[P] extends MutationIn<infer A, infer X, M, R> 
+        ? MutationOut<A, X> 
+        : never
   };
 }
 
 export interface MapperForActionsWithNamespace<T, R = T> 
 {
-  <K extends ActionKeys<T>, U = { [P in K]: (payload: ActionPayload<T[P]>) => Promise<ActionResult<T[P]>> }>(namespace: string, keys: K[]): U;
-                     
-  <K extends ActionKeys<T>, M extends { [key: string]: K | ActionIn<any[], any, T, R> }>(namespace: string, map: M): {
-    [P in keyof M]: M[P] extends keyof T 
-      ? (payload: ActionPayload<T[M[P]]>) => Promise<ActionResult<T[M[P]]>>
-      : (M[P] extends ActionIn<infer A, infer X, T, R> ? ActionOut<A, X> : never)
+  <M, K extends ActionKeys<M>, U = { [P in K]: ActionMapped<M[P]> }>(namespace: Path<M, T>, keys: K[]): U;
+
+  <M, K extends ActionKeys<M>, N extends { [key: string]: K | ActionIn<any[], any, M, R> }>(namespace: Path<M, T>, map: N): {
+    [P in keyof N]: N[P] extends K
+      ? ActionMapped<M[N[P]]>
+      : N[P] extends ActionIn<infer A, infer X, M, R> 
+        ? ActionOut<A, X> 
+        : never
   };
 }
 
@@ -611,7 +636,7 @@ export const mapGetters: MapperForGetters<any> & MapperForGettersWithNamespace<a
 
 export const mapMutations: MapperForMutations<any> & MapperForMutationsWithNamespace<any>;
 
-export const mapActions: MapperForActions<any, any> & MapperForActionsWithNamespace<any, any>;
+export const mapActions: MapperForActions<any> & MapperForActionsWithNamespace<any>;
 
 declare const _default: {
   Store: typeof Store,

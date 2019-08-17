@@ -1,5 +1,5 @@
 
-import { Module, Store, path, createNamespacedHelpers, createHelpers, mapState, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit, ActionPayload, ActionKeysNoPayload, MutationKeysNoPayload, MutationKeysWithPayload, MutationPayload, IsMutation, ActionTree, ActionKeys, ActionKeysRoot, ActionPayloadRoot, MutationKeysRoot, MutationPayloadRoot } from './index';
+import { Module, Store, path, createNamespacedHelpers, createHelpers, mapState, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit, ActionPayload, ActionKeysNoPayload, MutationKeysNoPayload, MutationKeysWithPayload, MutationPayload, IsMutation, ActionTree, ActionKeys, ActionKeysRoot, ActionPayloadRoot, MutationKeysRoot, MutationPayloadRoot, mapGetters, mapMutations, mapActions, MutationKeys } from './index';
 
 interface MergedModule {
   merged: number;
@@ -199,9 +199,13 @@ interface IFullStore {
     named: {
       namespaced: true;
       variable: string;
+      variable2: string;
       readonly length: number;
+      readonly length2: number;
       setVariable (variable: string): void;
+      setVariable2 (): void;
       loadVariable (from: boolean): Promise<string>;
+      loadVariable2 (): Promise<string>;
     }
   }
 };
@@ -232,6 +236,7 @@ const full = new Store<IFullStore>({
 
           commit('setUser', user.id, { root: true });
           commit('setProfile', user, { root: true });
+          commit(path<IFullStore>().module('named').mutation('setVariable'), 'yes', { root: true });
           return true;
         }
       }
@@ -256,34 +261,44 @@ const full = new Store<IFullStore>({
     named: {
       namespaced: true,
       state: {
-        variable: ''
+        variable: '',
+        variable2: ''
       },
       getters: {
         length (state, getters) {
           return state.variable.length;
+        },
+        length2 (state, getters) {
+          return state.variable2.length;
         }
       },
       mutations: {
         setVariable (state, value) {
           state.variable = value;
+        },
+        setVariable2 (state, isUnknown) {
+          state.variable2 = '';
         }
       },
       actions: {
         async loadVariable (context, from) {
           return context.state.variable;
+        },
+        async loadVariable2 (context, isUnknown) {
+          return context.state.variable2;
         }
       }
     }
   }
 });
 
-type A = MutationKeysNoPayload<IProfileModule>; // none
+type A = MutationKeysNoPayload<IProfileModule>; // never
 type B = MutationKeysWithPayload<IProfileModule>; // setProfile
-type C = MutationPayload<(profile?: { email: string, created_at: Date }) => void>;
-type C2 = MutationPayload<(profile: { email: string, created_at: Date }) => void>;
-type C3 = MutationPayload<() => void>;
-type E = MutationPayload<() => void>;
-type D = ActionPayload<(profile?: { email: string, created_at: Date }) => Promise<void>>;
+type C = MutationPayload<(profile?: { email: string, created_at: Date }) => void>; // { email: string; created_at: Date; } | undefined
+type C2 = MutationPayload<(profile: { email: string, created_at: Date }) => void>; // { email: string; created_at: Date; }
+type C3 = MutationPayload<() => void>; // never
+type E = MutationPayload<() => void>; // never
+type D = ActionPayload<(profile?: { email: string, created_at: Date }) => Promise<void>>; // { email: string; created_at: Date; } | undefined
 
 type F1 = ((x: number) => void) extends (() => void) ? true : false; // false
 type F2 = ((x?: number) => void) extends (() => void) ? true : false; // true
@@ -317,8 +332,8 @@ type H7 = unknown extends unknown ? true : false; // true
 type H8 = unknown extends null ? true : false; // false
 type HA = [unknown] extends [any] ? true : false; // true NO!
 type GetArgs<T> = T extends (...args: infer A) => infer R ? A : never;
-type HE = GetArgs<() => void>;
-type HF = GetArgs<(x?: number, y?: boolean) => string>;
+type HE = GetArgs<() => void>; // []
+type HF = GetArgs<(x?: number, y?: boolean) => string>; // [(number | undefined)?, (boolean | undefined)?]
 type HG = [] extends [] ? true : false; // true
 type HH = [3] extends [] ? true : false; // false
 type HI = [] extends [3] ? true : false; // false
@@ -328,7 +343,7 @@ type HJ = SingleItem<[]>; // never
 type HK = SingleItem<[3]>; // 3
 type HL = SingleItem<[3, true]>; // never
 type GetArg<T> = T extends (...any: infer A) => void ? (A extends ([infer E] | [(infer E)?]) ? E : never) : never;
-type HM = GetArg<(x?: number) => void>;
+type HM = GetArg<(x?: number) => void>; // never
 type HN = GetArgs<(x?: number) => void>;
 type HO = HN extends [(infer E)?] ? E : never;
 
@@ -370,24 +385,56 @@ full.commit('setProfile'); // ERROR!
                 
 const p = path<IFullStore>();
 const m = p.module('named');
-const mp = m.get()
-const s = m.state('variable').get();
-const g = m.getter('length').get();
-const u = m.mutation('setVariable').get();
-const a = m.action('loadVariable').get();
+const s = m.state('variable');
+const g = m.getter('length');
+const u = m.mutation('setVariable');
+const a = m.action('loadVariable');
 
 full.commit(u, 'newValue!');
+full.dispatch(a, true);
 
 const rr = full.dispatch(a, true);
 
-const maps1 = createNamespacedHelpers(mp);
-const m1 = maps1.mapState(['variable']);
-const m2 = maps1.mapActions(['loadVariable']);
-const m3 = maps1.mapGetters(['length']);
-const m4 = maps1.mapMutations(['setVariable']);
+const maps1 = createNamespacedHelpers(m);
+/*[x]*/ const m1 = maps1.mapState(['variable']); // variable: () => string;
+/*[x]*/ const m2 = maps1.mapActions(['loadVariable']); // loadVariable: (payload: boolean) => Promise<string>
+/*[x]*/ const m3 = maps1.mapGetters(['length']); // length: () => number
+/*[x]*/ const m4 = maps1.mapMutations(['setVariable']); // setVariable: (payload: string) => void
+/*[x]*/ const m5 = maps1.mapState({ a: s => s.variable }); // a: () => string
+/*[x]*/ const m6 = maps1.mapActions({ lv: 'loadVariable' }); // lv: (payload: boolean) => Promise<string>
+/*[x]*/ const m7 = maps1.mapGetters({ len: 'length' }); // len: () => number
+/*[x]*/ const m8 = maps1.mapMutations({ setV: 'setVariable' }); // setV: (payload: string) => void;
+/*[x]*/ const m9 = maps1.mapMutations({ setZ: 'setVariable2' }); // setZ: () => void;
 
 const maps2 = createHelpers<IFullStore>();
-const n1 = maps2.mapState(['user']);
-const n2 = maps2.mapState(mp, ['variable']);
-const n3 = maps2.mapActions(mp, ['loadVariable']);
-const n4 = mapState(mp, ['variable']);
+/*[x]*/ const n1 = maps2.mapState(['user']); // user: () => string | null
+/*[x]*/ const n2 = maps2.mapState(m, ['variable']); // variable: () => string
+/*[ ]*/ const n3 = maps2.mapActions(m, ['loadVariable']); // loadVariable: (payload: boolean) => Promise<string>
+/*[ ]*/ const n6 = maps2.mapMutations(m, ['setVariable']); // setVariable: (payload: string) => void;
+/*[x]*/ const n7 = maps2.mapGetters(m, ['length']); // length: () => number
+/*[ ]*/ const n8 = maps2.mapActions(m, ['loadVariable2']); // loadVariable2: () => Promise<string>
+/*[ ]*/ const n9 = maps2.mapMutations(m, { setV: 'setVariable' }); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+/*[x]*/ const nb = maps2.mapState({ b: s => s.named.variable }); // b: () => string;
+/*[ ]*/ const nc = maps2.mapActions(m, { lv: 'loadVariable' }); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+/*[x]*/ const nd = maps2.mapState(m, { b: 'variable2' }); // b: () => string;
+
+/*[x]*/ const o1 = mapState(p, ['user']); // user: () => string | null;
+/*[x]*/ const o2 = mapState(m, ['variable']); // variable: () => string;
+/*[x]*/ const o3 = mapState(m, { variableAlias: 'variable' }) // variableAlias: () => string;
+/*[x]*/ const o4 = mapGetters(m, ['length']); // length: () => number;
+/*[x]*/ const o5 = mapGetters(m, { len: 'length' }); // len: () => number;
+/*[ ]*/ const o6 = mapMutations(m, ['setVariable']); // setVariable: (payload: string) => void;
+/*[ ]*/ const o7 = mapMutations(m, { setV: 'setVariable' }); //
+/*[ ]*/ const o8 = mapActions(m, ['loadVariable']); // loadVariable: (payload: boolean) => Promise<string>
+/*[ ]*/ const o9 = mapActions(m, { custom: 'loadVariable' }); // 
+/*[x]*/ const oa = mapMutations(m, { setW: (commit, x, y) => {} }); // setW: MutationOut<[any, any], void>
+/*[x]*/ const ob = mapActions(m, { setY: async (dispatch, a: number, b: string) => {} }); // setY: ActionOut<[number, string], void>;
+
+/*[x]*/ oa.setW(0, 5); // (x, y) => void
+/*[x]*/ ob.setY(0, '5'); // (a, b) => Promise<void>
+
+const { mapState: ms, mapGetters: mg, mapActions: ma, mapMutations: mm } = createNamespacedHelpers(m);
+/*[x]*/ const p1 = ms(['variable']); // variable: () => string;
+/*[x]*/ const p2 = mg(['length']); // length: () => number;
+/*[x]*/ const p3 = ma(['loadVariable']); // loadVariable: (payload: boolean) => Promise<string>;
+/*[x]*/ const p4 = mm(['setVariable']); // setVariable: (payload: string) => void;

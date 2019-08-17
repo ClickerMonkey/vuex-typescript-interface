@@ -14,7 +14,7 @@ function remap(mapper)
 {
   return function(namespaceOrMappings, mappings) {
     return namespaceOrMappings instanceof Path 
-      ? mapper(namespaceOrMappings.getFullPath(), mappings)
+      ? mapper(namespaceOrMappings.get(), mappings)
       : mapper(namespaceOrMappings, mappings);
   };
 }
@@ -59,23 +59,23 @@ export class ModulePath extends Path
   }
 
   state(name) {
-    return new EndPath(this, name);
+    return new EndPath(this, name).get();
   }
 
   getter(name) {
-    return new EndPath(this, name);
+    return new EndPath(this, name).get();
   }
 
   mutation(name) {
-    return new EndPath(this, name);
+    return new EndPath(this, name).get();
   }
 
   action(name) {
-    return new EndPath(this, name);
+    return new EndPath(this, name).get();
   }
 }
 
-export class EndPath extends Path
+class EndPath extends Path
 {
   
 }
