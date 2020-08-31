@@ -1,5 +1,5 @@
 
-import { Module, Store, path, createNamespacedHelpers, createHelpers, mapState, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit, ActionPayload, ActionKeysNoPayload, MutationKeysNoPayload, MutationKeysWithPayload, MutationPayload, IsMutation, ActionTree, ActionKeys, ActionKeysRoot, ActionPayloadRoot, MutationKeysRoot, MutationPayloadRoot } from './index';
+import { Module, Store, path, createNamespacedHelpers, createHelpers, mapState, MergedCommitFor, StripNever, ObjKeyof, Lookup, Flatten, Commit, ActionPayload, ActionKeysNoPayload, MutationKeysNoPayload, MutationKeysWithPayload, MutationPayload, IsMutation, ActionTree, ActionKeys, ActionKeysRoot, ActionPayloadRoot, MutationKeysRoot, MutationPayloadRoot, IsNever } from './index';
 
 interface MergedModule {
   merged: number;
@@ -201,7 +201,9 @@ interface IFullStore {
       variable: string;
       readonly length: number;
       setVariable (variable: string): void;
+      unsetVariables (): void;
       loadVariable (from: boolean): Promise<string>;
+      clearVariable (): Promise<void>;
     }
   }
 };
@@ -266,11 +268,17 @@ const full = new Store<IFullStore>({
       mutations: {
         setVariable (state, value) {
           state.variable = value;
+        },
+        unsetVariables (state) {
+          state.variable = '';
         }
       },
       actions: {
         async loadVariable (context, from) {
           return context.state.variable;
+        },
+        async clearVariable (context) {
+          context.commit('setVariable', '');
         }
       }
     }
@@ -382,12 +390,16 @@ const rr = full.dispatch(a, true);
 
 const maps1 = createNamespacedHelpers(mp);
 const m1 = maps1.mapState(['variable']);
-const m2 = maps1.mapActions(['loadVariable']);
+const m2 = maps1.mapActions(['loadVariable', 'clearVariable']);
 const m3 = maps1.mapGetters(['length']);
-const m4 = maps1.mapMutations(['setVariable']);
+const m4 = maps1.mapMutations(['setVariable', 'unsetVariables']);
 
 const maps2 = createHelpers<IFullStore>();
 const n1 = maps2.mapState(['user']);
 const n2 = maps2.mapState(mp, ['variable']);
 const n3 = maps2.mapActions(mp, ['loadVariable']);
 const n4 = mapState(mp, ['variable']);
+
+
+type X = [string] extends [never] ? true : false;
+type Y = IsNever<string>
