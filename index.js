@@ -45,7 +45,13 @@ export class Path
   }
   
   get() {
-    return this.parent ? this.parent.get() + '/' + this.section : this.section;
+    if (!this.parent) {
+      return this.section;
+    }
+
+    const p = this.parent.get();
+
+    return p ? p + '/' + this.section : this.section;
   }
 }
 
