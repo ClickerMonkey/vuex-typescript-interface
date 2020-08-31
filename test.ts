@@ -399,7 +399,3 @@ const n1 = maps2.mapState(['user']);
 const n2 = maps2.mapState(mp, ['variable']);
 const n3 = maps2.mapActions(mp, ['loadVariable']);
 const n4 = mapState(mp, ['variable']);
-
-
-type X = [string] extends [never] ? true : false;
-type Y = IsNever<string>

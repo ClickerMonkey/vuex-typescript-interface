@@ -39,9 +39,6 @@ export function createHelpers()
 
 export class Path
 {
-  parent;
-  section;
-
   constructor(parent = null, section = '') {
     this.parent = parent;
     this.section = section;
